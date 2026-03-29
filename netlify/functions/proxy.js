@@ -1,5 +1,16 @@
-  'Access-Control-Allow-Origin': '*'
+exports.handler = async (event) => {
+  const SCRIPT_URL = process.env.SCRIPT_URL;
+  const headers = {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST',
+    'Access-Control-Allow-Headers': 'Content-Type'
   };
+
+  if (event.httpMethod === 'OPTIONS') {
+    return { statusCode: 200, headers, body: '' };
+  }
+
   try {
     if (event.httpMethod === 'GET') {
       const res = await fetch(`${SCRIPT_URL}?action=get`);
@@ -10,8 +21,8 @@
       const body = JSON.parse(event.body);
       const fd = new URLSearchParams();
       fd.append('data', JSON.stringify(body));
-      const res = await fetch(SCRIPT_URL, { 
-        method: 'POST', 
+      const res = await fetch(SCRIPT_URL, {
+        method: 'POST',
         body: fd,
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
       });
