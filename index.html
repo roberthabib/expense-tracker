@@ -499,15 +499,37 @@ async function fetchWithRetry(url, options = {}, retries = 2) {
   }
 }
 
+function loadFromCache() {
+  try {
+    const cached = localStorage.getItem('masraf_cache');
+    if (!cached) return false;
+    const { expenses, ts } = JSON.parse(cached);
+    allExpenses = expenses || [];
+    updateSummary(); renderRecent(); renderFull();
+    const mins = Math.round((Date.now() - ts) / 60000);
+    showToast(`Loaded from cache · syncing…`, 'info');
+    return true;
+  } catch(e) { return false; }
+}
+
+function saveToCache(expenses) {
+  try { localStorage.setItem('masraf_cache', JSON.stringify({ expenses, ts: Date.now() })); } catch(e) {}
+}
+
 window.onload = () => {
   document.getElementById('a_date').value = todayStr();
   if (SCRIPT_URL) document.getElementById('urlInput').value = SCRIPT_URL;
   if (LBP_RATE)   document.getElementById('rateInput').value = LBP_RATE;
-  if (SCRIPT_URL) { setConn('on'); document.getElementById('addBtn').disabled = false; loadExpenses(); }
   updateMonthLabel();
   renderCatGrid();
   renderCustomCatList();
   renderFilterCats();
+  if (SCRIPT_URL) {
+    setConn('on');
+    document.getElementById('addBtn').disabled = false;
+    loadFromCache();  // show cached data instantly
+    loadExpenses();   // refresh in background
+  }
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(()=>{});
 };
 
@@ -584,6 +606,7 @@ async function loadExpenses() {
     const data = await res.json();
     if (data.status === 'ok') {
       allExpenses = data.expenses || [];
+      saveToCache(allExpenses);
       setConn('on');
       updateSummary(); renderRecent(); renderFull();
       showToast(`${allExpenses.length} expenses loaded`, 'ok');
