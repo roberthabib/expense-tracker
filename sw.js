@@ -14,10 +14,16 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
-  // Never cache API/function calls — always go to network
-  if (e.request.url.includes('/.netlify/') || e.request.url.includes('script.google.com')) {
+  // Never cache API calls — always go to network
+  if (e.request.url.includes('/api/') || e.request.url.includes('script.google.com')) {
     return;
   }
+  // Always fetch fresh HTML so updates are picked up immediately
+  if (e.request.destination === 'document') {
+    e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
+    return;
+  }
+  // Cache first for images/icons
   e.respondWith(
     caches.match(e.request).then(cached => cached || fetch(e.request))
   );
