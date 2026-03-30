@@ -67,8 +67,8 @@ html, body { height:100%; background:var(--bg); color:var(--text); font-family:'
 
 /* Hero */
 .hero { background:linear-gradient(135deg,#1a5f6e 0%,#0d4352 100%); border-radius:22px; padding:24px 22px 20px; margin-bottom:14px; position:relative; overflow:hidden; box-shadow:0 8px 32px rgba(13,67,82,0.30); }
-.hero::before { content:''; position:absolute; top:-60px; right:-60px; width:200px; height:200px; border-radius:50%; background:radial-gradient(circle,rgba(255,255,255,0.06) 0%,transparent 70%); }
-.hero::after { content:''; position:absolute; bottom:-30px; left:-30px; width:120px; height:120px; border-radius:50%; background:radial-gradient(circle,rgba(255,255,255,0.04) 0%,transparent 70%); }
+.hero::before { content:''; position:absolute; top:-60px; right:-60px; width:200px; height:200px; border-radius:50%; background:radial-gradient(circle,rgba(255,255,255,0.06) 0%,transparent 70%); pointer-events:none; }
+.hero::after { content:''; position:absolute; bottom:-30px; left:-30px; width:120px; height:120px; border-radius:50%; background:radial-gradient(circle,rgba(255,255,255,0.04) 0%,transparent 70%); pointer-events:none; }
 .hero-month { display:flex; align-items:center; margin-bottom:16px; }
 .month-nav { background:rgba(255,255,255,0.12); border:none; border-radius:8px; color:rgba(255,255,255,0.7); font-size:18px; width:30px; height:30px; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:all 0.15s; }
 .month-nav:active { background:rgba(255,255,255,0.2); }
@@ -252,6 +252,7 @@ textarea { resize:none; height:76px; }
           <button class="month-nav" onclick="shiftMonth(-1)">‹</button>
           <span class="month-label" id="monthLabel"></span>
           <button class="month-nav" onclick="shiftMonth(1)">›</button>
+          <button class="month-nav" onclick="goToCurrentMonth()" style="font-size:10px;width:auto;padding:0 8px;margin-left:4px;" id="todayBtn">Now</button>
         </div>
         <div class="hero-total-label">Total Monthly Spending</div>
         <div class="hero-total" id="h_total">—</div>
@@ -520,6 +521,11 @@ function toUSD(amount, currency) {
 
 function getViewMonth() {
   return `${viewYear}-${String(viewMonth+1).padStart(2,'0')}`;
+}
+function goToCurrentMonth() {
+  const now = new Date();
+  viewYear = now.getFullYear(); viewMonth = now.getMonth();
+  updateMonthLabel(); updateSummary(); renderRecent();
 }
 function shiftMonth(delta) {
   viewMonth += delta;
