@@ -465,6 +465,9 @@ let allExpenses = [];
 let selectedWho = 'Robert', selectedCat = '', selectedCur = 'USD';
 let catFilter = '', whoFilter = '', curFilter = '';
 let currentMonthOffset = 0;
+let _now = new Date();
+let viewYear = _now.getFullYear();
+let viewMonth = _now.getMonth();
 
 const DEFAULT_CATS = [
   {emoji:'🛒', name:'Food'},
@@ -516,16 +519,20 @@ function toUSD(amount, currency) {
 }
 
 function getViewMonth() {
-  const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() + currentMonthOffset);
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+  return `${viewYear}-${String(viewMonth+1).padStart(2,'0')}`;
 }
 function shiftMonth(delta) {
-  currentMonthOffset += delta;
-  if (currentMonthOffset > 0) currentMonthOffset = 0;
+  viewMonth += delta;
+  if (viewMonth > 11) { viewYear++; viewMonth = 0; }
+  if (viewMonth < 0)  { viewYear--; viewMonth = 11; }
+  const now = new Date();
+  if (viewYear > now.getFullYear() || (viewYear === now.getFullYear() && viewMonth > now.getMonth())) {
+    viewYear = now.getFullYear(); viewMonth = now.getMonth();
+  }
   updateMonthLabel(); updateSummary(); renderRecent();
 }
 function updateMonthLabel() {
-  const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() + currentMonthOffset);
+  const d = new Date(viewYear, viewMonth, 1);
   document.getElementById('monthLabel').textContent = d.toLocaleString('default', { month:'long', year:'numeric' });
 }
 
