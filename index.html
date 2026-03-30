@@ -185,6 +185,17 @@ textarea { resize:none; height:76px; }
 .filter-chip { white-space:nowrap; padding:7px 14px; border-radius:20px; font-size:12px; font-weight:500; background:var(--surface); border:1.5px solid var(--border); color:var(--mid); cursor:pointer; transition:all 0.15s; flex-shrink:0; font-family:'Inter',sans-serif; box-shadow:0 1px 4px rgba(0,0,0,0.05); }
 .filter-chip.active { background:var(--teal); border-color:var(--teal); color:#fff; }
 
+/* Search */
+.search-wrap { position:relative; margin-bottom:10px; }
+.search-input { width:100%; background:var(--surface); border:1.5px solid var(--border); border-radius:12px; color:var(--text); font-family:'Inter',sans-serif; font-size:14px; padding:11px 14px 11px 38px; outline:none; transition:border-color 0.2s; }
+.search-input:focus { border-color:var(--teal); }
+.search-icon { position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--muted); pointer-events:none; }
+.search-clear { position:absolute; right:10px; top:50%; transform:translateY(-50%); background:none; border:none; color:var(--muted); cursor:pointer; font-size:16px; padding:4px; display:none; }
+
+/* Offline queue badge */
+.queue-badge { background:var(--red-dim); border:1.5px solid rgba(224,90,58,0.25); color:var(--red); border-radius:20px; padding:5px 10px 5px 8px; font-size:11px; font-weight:600; display:none; align-items:center; gap:5px; box-shadow:var(--shadow); letter-spacing:0.02em; text-transform:uppercase; cursor:pointer; }
+.queue-badge.visible { display:flex; }
+
 /* Setup */
 .setup-hero { text-align:center; padding:28px 0 20px; }
 .setup-icon { font-size:44px; margin-bottom:12px; }
@@ -233,6 +244,10 @@ textarea { resize:none; height:76px; }
     <div class="topbar-logo">EXPENSE TRACKER v2</div>
     <div class="topbar-center"></div>
     <div class="topbar-right">
+      <div class="queue-badge" id="queueBadge" onclick="syncQueue()">
+        <div class="conn-dot err"></div>
+        <span id="queueLabel">0 pending</span>
+      </div>
       <div class="conn-badge" id="connPill">
         <div class="conn-dot" id="connDot"></div>
         <span id="connLabel">Offline</span>
@@ -347,6 +362,11 @@ textarea { resize:none; height:76px; }
 
     <!-- LIST -->
     <div class="screen" id="sc-list">
+      <div class="search-wrap">
+        <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input class="search-input" type="text" id="searchInput" placeholder="Search expenses…" oninput="onSearch()" />
+        <button class="search-clear" id="searchClear" onclick="clearSearch()">✕</button>
+      </div>
       <div class="filter-strip" data-type="cat">
         <div class="filter-chip active" data-cat="" onclick="setCatFilter(this,'')">All</div>
       </div>
@@ -464,8 +484,9 @@ let SCRIPT_URL = localStorage.getItem('masraf_url') || '';
 let LBP_RATE   = parseFloat(localStorage.getItem('masraf_rate')) || 0;
 let allExpenses = [];
 let selectedWho = 'Robert', selectedCat = '', selectedCur = 'USD';
-let catFilter = '', whoFilter = '', curFilter = '';
+let catFilter = '', whoFilter = '', curFilter = '', searchQuery = '';
 let currentMonthOffset = 0;
+let offlineQueue = JSON.parse(localStorage.getItem('masraf_queue') || '[]');
 let _now = new Date();
 let viewYear = _now.getFullYear();
 let viewMonth = _now.getMonth();
@@ -531,6 +552,8 @@ window.onload = () => {
     loadExpenses();   // refresh in background
   }
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(()=>{});
+  updateQueueBadge();
+  window.addEventListener('online', () => { if (offlineQueue.length) syncQueue(); });
 };
 
 function todayStr() { return new Date().toISOString().split('T')[0]; }
@@ -646,7 +669,30 @@ function renderFull() {
   if (catFilter) items = items.filter(e=>e.category===catFilter);
   if (whoFilter) items = items.filter(e=>e.who===whoFilter);
   if (curFilter) items = items.filter(e=>e.currency===curFilter);
+  if (searchQuery) {
+    const q = searchQuery.toLowerCase();
+    items = items.filter(e =>
+      (e.description||'').toLowerCase().includes(q) ||
+      (e.category||'').toLowerCase().includes(q) ||
+      (e.who||'').toLowerCase().includes(q) ||
+      String(e.amount).includes(q)
+    );
+  }
   renderList('fullList', items, true);
+}
+
+function onSearch() {
+  const inp = document.getElementById('searchInput');
+  searchQuery = inp.value.trim();
+  document.getElementById('searchClear').style.display = searchQuery ? 'block' : 'none';
+  renderFull();
+}
+
+function clearSearch() {
+  document.getElementById('searchInput').value = '';
+  document.getElementById('searchClear').style.display = 'none';
+  searchQuery = '';
+  renderFull();
 }
 
 function catIcon(c) { const f=allCats().find(x=>x.name===c); return f?f.emoji:'📦'; }
@@ -686,10 +732,11 @@ function renderList(id, items, grouped) {
 
 function expRow(e) {
   const isRobert = e.who === 'Robert';
-  return `<div class="exp-item" onclick='openEdit(${JSON.stringify(e)})'>
+  const clickHandler = e._pending ? '' : `onclick='openEdit(${JSON.stringify(e)})'`;
+  return `<div class="exp-item" ${clickHandler} style="${e._pending?'opacity:0.5':''}">
     <div class="exp-icon ${catBg(e.category)}">${catIcon(e.category)}</div>
     <div class="exp-info">
-      <div class="exp-cat">${e.category||'—'}</div>
+      <div class="exp-cat">${e.category||'—'}${e._pending?' ⏳':''}</div>
       <div class="exp-meta">${fmtDateShort(e.date)}${e.description?' · '+e.description:''}</div>
     </div>
     <div class="exp-right">
@@ -721,6 +768,41 @@ function setWho(who) {
   document.getElementById('wo_hanady').classList.toggle('active', who==='Hanady');
 }
 
+function saveQueue() { localStorage.setItem('masraf_queue', JSON.stringify(offlineQueue)); }
+function updateQueueBadge() {
+  const badge = document.getElementById('queueBadge');
+  const label = document.getElementById('queueLabel');
+  if (offlineQueue.length > 0) {
+    label.textContent = offlineQueue.length + ' pending';
+    badge.classList.add('visible');
+  } else {
+    badge.classList.remove('visible');
+  }
+}
+
+async function syncQueue() {
+  if (!offlineQueue.length || !SCRIPT_URL) return;
+  showToast('Syncing ' + offlineQueue.length + ' pending…', 'info');
+  const failed = [];
+  for (const item of offlineQueue) {
+    try {
+      const res = await fetchWithRetry('/api/proxy', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(item)});
+      const data = await res.json();
+      if (data.status !== 'ok') failed.push(item);
+      else if (item.action === 'add' && data.row) {
+        const idx = allExpenses.findIndex(e => e._qid === item._qid);
+        if (idx !== -1) { allExpenses[idx].row = data.row; delete allExpenses[idx]._qid; delete allExpenses[idx]._pending; }
+      }
+    } catch(e) { failed.push(item); }
+  }
+  offlineQueue = failed;
+  saveQueue(); updateQueueBadge();
+  saveToCache(allExpenses);
+  updateSummary(); renderRecent(); renderFull();
+  if (!failed.length) showToast('All synced ✓', 'ok');
+  else showToast(failed.length + ' items failed to sync', 'bad');
+}
+
 async function submitExpense() {
   const date=document.getElementById('a_date').value, amount=parseFloat(document.getElementById('a_amount').value);
   const category=selectedCat, currency=selectedCur, desc=document.getElementById('a_desc').value.trim();
@@ -733,10 +815,21 @@ async function submitExpense() {
     const data=await res.json();
     if (data.status==='ok') {
       allExpenses.unshift({...expense,row:data.row});
+      saveToCache(allExpenses);
       updateSummary(); renderRecent(); renderFull();
       showToast('Expense added ✓','ok'); clearAdd(); switchScreen('home');
     } else throw new Error(data.message);
-  } catch(e) { showToast('Failed: '+e.message,'bad'); }
+  } catch(e) {
+    // Offline — queue it
+    const qid = Date.now();
+    const pending = {...expense, _qid:qid, _pending:true};
+    allExpenses.unshift(pending);
+    offlineQueue.push({action:'add', expense, _qid:qid});
+    saveQueue(); saveToCache(allExpenses); updateQueueBadge();
+    updateSummary(); renderRecent(); renderFull();
+    showToast('Saved offline — will sync when connected','info');
+    clearAdd(); switchScreen('home');
+  }
   finally { btn.disabled=false; btn.innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Add Expense'; updateAddBtn(); }
 }
 
