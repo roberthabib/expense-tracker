@@ -197,6 +197,14 @@ textarea { resize:none; height:76px; }
 /* Rate hint */
 .rate-hint { font-size:12px; color:var(--muted); margin-top:5px; padding-left:2px; }
 
+/* Custom category management */
+.custom-cat-item { display:flex; align-items:center; justify-content:space-between; padding:9px 0; border-bottom:1px solid var(--border); }
+.custom-cat-item:last-child { border-bottom:none; }
+.custom-cat-info { display:flex; align-items:center; gap:8px; font-size:14px; font-weight:500; color:var(--text); }
+.custom-cat-emoji { font-size:20px; }
+.remove-cat-btn { background:var(--red-dim); border:none; border-radius:8px; color:var(--red); font-size:11px; font-weight:600; padding:5px 10px; cursor:pointer; flex-shrink:0; }
+.empty-cats { font-size:13px; color:var(--muted); text-align:center; padding:10px 0; }
+
 /* Toast */
 .toast { position:fixed; top:calc(64px + var(--safe-top)); left:50%; transform:translateX(-50%) translateY(-16px); background:var(--text); border-radius:12px; padding:11px 18px; font-size:13px; font-weight:500; color:#fff; box-shadow:0 8px 32px rgba(0,0,0,0.2); opacity:0; transition:all 0.22s cubic-bezier(0.34,1.56,0.64,1); z-index:999; max-width:calc(100vw - 40px); pointer-events:none; white-space:nowrap; display:flex; align-items:center; gap:8px; }
 .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
@@ -310,16 +318,7 @@ textarea { resize:none; height:76px; }
       <div class="form-card">
         <div class="field">
           <label>Category</label>
-          <div class="cat-grid">
-            <button class="cat-opt" data-cat="Food"          onclick="setCategory(this,'Food')">🛒<span>Food</span></button>
-            <button class="cat-opt" data-cat="Transport"     onclick="setCategory(this,'Transport')">🚗<span>Transport</span></button>
-            <button class="cat-opt" data-cat="Utilities"     onclick="setCategory(this,'Utilities')">💡<span>Utilities</span></button>
-            <button class="cat-opt" data-cat="Health"        onclick="setCategory(this,'Health')">🏥<span>Health</span></button>
-            <button class="cat-opt" data-cat="Entertainment" onclick="setCategory(this,'Entertainment')">🎬<span>Fun</span></button>
-            <button class="cat-opt" data-cat="Education"     onclick="setCategory(this,'Education')">📚<span>Education</span></button>
-            <button class="cat-opt" data-cat="Shopping"      onclick="setCategory(this,'Shopping')">🛍<span>Shopping</span></button>
-            <button class="cat-opt" data-cat="Other"         onclick="setCategory(this,'Other')">📦<span>Other</span></button>
-          </div>
+          <div class="cat-grid" id="catGrid"></div>
         </div>
         <div class="field">
           <label>Who Paid</label>
@@ -347,16 +346,8 @@ textarea { resize:none; height:76px; }
 
     <!-- LIST -->
     <div class="screen" id="sc-list">
-      <div class="filter-strip">
+      <div class="filter-strip" data-type="cat">
         <div class="filter-chip active" data-cat="" onclick="setCatFilter(this,'')">All</div>
-        <div class="filter-chip" data-cat="Food"          onclick="setCatFilter(this,'Food')">🛒 Food</div>
-        <div class="filter-chip" data-cat="Transport"     onclick="setCatFilter(this,'Transport')">🚗 Transport</div>
-        <div class="filter-chip" data-cat="Utilities"     onclick="setCatFilter(this,'Utilities')">💡 Utilities</div>
-        <div class="filter-chip" data-cat="Health"        onclick="setCatFilter(this,'Health')">🏥 Health</div>
-        <div class="filter-chip" data-cat="Entertainment" onclick="setCatFilter(this,'Entertainment')">🎬 Fun</div>
-        <div class="filter-chip" data-cat="Education"     onclick="setCatFilter(this,'Education')">📚 Education</div>
-        <div class="filter-chip" data-cat="Shopping"      onclick="setCatFilter(this,'Shopping')">🛍 Shopping</div>
-        <div class="filter-chip" data-cat="Other"         onclick="setCatFilter(this,'Other')">📦 Other</div>
       </div>
       <div class="filter-strip">
         <div class="filter-chip active" data-who="" onclick="setWhoFilter(this,'')">Everyone</div>
@@ -393,6 +384,18 @@ textarea { resize:none; height:76px; }
 
       <button class="btn btn-teal" onclick="saveSettings()">Save & Connect</button>
       <button class="btn btn-ghost" onclick="goHome()">Cancel</button>
+
+      <div style="margin-top:20px;">
+        <div style="font-size:11px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;">Custom Categories</div>
+        <div class="form-card" style="margin-bottom:8px;">
+          <div id="customCatList"></div>
+          <div class="row2" style="margin-top:12px;">
+            <input type="text" id="newCatEmoji" placeholder="Emoji e.g. 🏠" maxlength="4" style="text-align:center;font-size:22px;padding:10px;" />
+            <input type="text" id="newCatName" placeholder="Name e.g. Rent" maxlength="20" />
+          </div>
+          <button class="btn btn-ghost" style="margin-top:10px;" onclick="addCustomCat()">+ Add Category</button>
+        </div>
+      </div>
 
       <div style="margin-top:24px;">
         <div style="font-size:11px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;">Quick Setup</div>
@@ -438,16 +441,7 @@ textarea { resize:none; height:76px; }
     </div>
     <div class="field">
       <label>Category</label>
-      <select id="e_category">
-        <option value="Food">🛒 Food & Groceries</option>
-        <option value="Transport">🚗 Transport</option>
-        <option value="Utilities">💡 Utilities</option>
-        <option value="Health">🏥 Health</option>
-        <option value="Entertainment">🎬 Entertainment</option>
-        <option value="Education">📚 Education</option>
-        <option value="Shopping">🛍 Shopping</option>
-        <option value="Other">📦 Other</option>
-      </select>
+      <select id="e_category"></select>
     </div>
     <div class="field">
       <label>Who Paid</label>
@@ -472,12 +466,45 @@ let selectedWho = 'Robert', selectedCat = '', selectedCur = 'USD';
 let catFilter = '', whoFilter = '', curFilter = '';
 let currentMonthOffset = 0;
 
+const DEFAULT_CATS = [
+  {emoji:'🛒', name:'Food'},
+  {emoji:'🚗', name:'Transport'},
+  {emoji:'💡', name:'Utilities'},
+  {emoji:'🏥', name:'Health'},
+  {emoji:'🎬', name:'Entertainment'},
+  {emoji:'📚', name:'Education'},
+  {emoji:'🛍', name:'Shopping'},
+  {emoji:'📦', name:'Other'},
+];
+let customCats = JSON.parse(localStorage.getItem('masraf_cats') || '[]');
+function allCats() { return [...DEFAULT_CATS, ...customCats]; }
+
+async function fetchWithRetry(url, options = {}, retries = 2) {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 12000);
+    try {
+      const res = await fetch(url, { ...options, signal: controller.signal });
+      clearTimeout(timer);
+      return res;
+    } catch (e) {
+      clearTimeout(timer);
+      if (attempt === retries) throw e;
+      await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+    }
+  }
+}
+
 window.onload = () => {
   document.getElementById('a_date').value = todayStr();
   if (SCRIPT_URL) document.getElementById('urlInput').value = SCRIPT_URL;
   if (LBP_RATE)   document.getElementById('rateInput').value = LBP_RATE;
   if (SCRIPT_URL) { setConn('on'); document.getElementById('addBtn').disabled = false; loadExpenses(); }
   updateMonthLabel();
+  renderCatGrid();
+  renderCustomCatList();
+  renderFilterCats();
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(()=>{});
 };
 
 function todayStr() { return new Date().toISOString().split('T')[0]; }
@@ -540,7 +567,7 @@ function saveSettings() {
 async function loadExpenses() {
   if (!SCRIPT_URL) return;
   try {
-    const res  = await fetch(`${SCRIPT_URL}?action=get`);
+    const res  = await fetchWithRetry('/api/proxy?action=get');
     const data = await res.json();
     if (data.status === 'ok') {
       allExpenses = data.expenses || [];
@@ -548,7 +575,7 @@ async function loadExpenses() {
       updateSummary(); renderRecent(); renderFull();
       showToast(`${allExpenses.length} expenses loaded`, 'ok');
     } else throw new Error(data.message);
-  } catch(e) { setConn('err'); showToast('Connection failed', 'bad'); }
+  } catch(e) { setConn('err'); showToast('Connection failed — retrying…', 'bad'); }
 }
 
 function updateSummary() {
@@ -586,8 +613,8 @@ function renderFull() {
   renderList('fullList', items, true);
 }
 
-const catIcon = c => ({Food:'🛒',Transport:'🚗',Utilities:'💡',Health:'🏥',Entertainment:'🎬',Education:'📚',Shopping:'🛍',Other:'📦'}[c]||'📦');
-const catBg   = c => 'ic-' + (c||'other').toLowerCase();
+function catIcon(c) { const f=allCats().find(x=>x.name===c); return f?f.emoji:'📦'; }
+const catBg = c => 'ic-' + (c||'other').toLowerCase();
 
 function fmtDateShort(d) {
   if (!d) return '—';
@@ -666,7 +693,7 @@ async function submitExpense() {
   const btn=document.getElementById('addBtn');
   btn.disabled=true; btn.textContent='Saving...';
   try {
-    const res=await fetch('/.netlify/functions/proxy',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'add',expense})});
+    const res=await fetchWithRetry('/api/proxy',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'add',expense})});
     const data=await res.json();
     if (data.status==='ok') {
       allExpenses.unshift({...expense,row:data.row});
@@ -699,6 +726,7 @@ function openEdit(e) {
   document.getElementById('e_date').value=e.date;
   document.getElementById('e_amount').value=e.amount;
   document.getElementById('e_currency').value=e.currency;
+  updateEditCategorySelect();
   document.getElementById('e_category').value=e.category;
   document.getElementById('e_who').value=e.who;
   document.getElementById('e_desc').value=e.description||'';
@@ -712,7 +740,7 @@ async function saveEdit() {
   const row=document.getElementById('e_row').value;
   const expense={date:document.getElementById('e_date').value,amount:parseFloat(document.getElementById('e_amount').value),currency:document.getElementById('e_currency').value,category:document.getElementById('e_category').value,who:document.getElementById('e_who').value,description:document.getElementById('e_desc').value.trim()};
   try {
-    const res=await fetch('/.netlify/functions/proxy',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'edit',row,expense})});
+    const res=await fetchWithRetry('/api/proxy',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'edit',row,expense})});
     const data=await res.json();
     if (data.status==='ok') {
       const idx=allExpenses.findIndex(e=>String(e.row)===String(row));
@@ -727,7 +755,7 @@ async function confirmDelete() {
   if (!confirm('Delete this expense?')) return;
   const row=document.getElementById('e_row').value;
   try {
-    const res=await fetch('/.netlify/functions/proxy',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'delete',row})});
+    const res=await fetchWithRetry('/api/proxy',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'delete',row})});
     const data=await res.json();
     if (data.status==='ok') {
       allExpenses=allExpenses.filter(e=>String(e.row)!==String(row));
@@ -742,6 +770,50 @@ function showToast(msg,type='info') {
   const t=document.getElementById('toast'), m=document.getElementById('toastMsg');
   m.textContent=msg; t.className=`toast ${type} show`;
   clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),3000);
+}
+
+function renderCatGrid() {
+  const grid=document.getElementById('catGrid'); if(!grid) return;
+  grid.innerHTML=allCats().map(c=>`<button class="cat-opt${selectedCat===c.name?' active':''}" data-cat="${c.name}" onclick="setCategory(this,'${c.name}')">${c.emoji}<span>${c.name}</span></button>`).join('');
+}
+
+function renderFilterCats() {
+  const strip=document.querySelector('.filter-strip[data-type="cat"]'); if(!strip) return;
+  strip.innerHTML=`<div class="filter-chip active" data-cat="" onclick="setCatFilter(this,'')">All</div>`+allCats().map(c=>`<div class="filter-chip" data-cat="${c.name}" onclick="setCatFilter(this,'${c.name}')">${c.emoji} ${c.name}</div>`).join('');
+}
+
+function updateEditCategorySelect() {
+  const sel=document.getElementById('e_category'); if(!sel) return;
+  const cur=sel.value;
+  sel.innerHTML=allCats().map(c=>`<option value="${c.name}">${c.emoji} ${c.name}</option>`).join('');
+  sel.value=cur;
+}
+
+function renderCustomCatList() {
+  const el=document.getElementById('customCatList'); if(!el) return;
+  if(!customCats.length){el.innerHTML='<div class="empty-cats">No custom categories yet</div>';return;}
+  el.innerHTML=customCats.map((c,i)=>`<div class="custom-cat-item"><div class="custom-cat-info"><span class="custom-cat-emoji">${c.emoji}</span><span>${c.name}</span></div><button class="remove-cat-btn" onclick="removeCustomCat(${i})">Remove</button></div>`).join('');
+}
+
+function addCustomCat() {
+  const emoji=document.getElementById('newCatEmoji').value.trim();
+  const name=document.getElementById('newCatName').value.trim();
+  if(!emoji||!name){showToast('Enter both an emoji and a name','bad');return;}
+  if(allCats().some(c=>c.name.toLowerCase()===name.toLowerCase())){showToast('Category already exists','bad');return;}
+  customCats.push({emoji,name});
+  localStorage.setItem('masraf_cats',JSON.stringify(customCats));
+  document.getElementById('newCatEmoji').value='';
+  document.getElementById('newCatName').value='';
+  renderCustomCatList(); renderCatGrid(); renderFilterCats(); updateEditCategorySelect();
+  showToast(`"${name}" added`,'ok');
+}
+
+function removeCustomCat(index) {
+  const name=customCats[index].name;
+  customCats.splice(index,1);
+  localStorage.setItem('masraf_cats',JSON.stringify(customCats));
+  renderCustomCatList(); renderCatGrid(); renderFilterCats(); updateEditCategorySelect();
+  showToast(`"${name}" removed`,'info');
 }
 </script>
 </body>
